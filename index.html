@@ -10,7 +10,7 @@
             padding: 0;
             box-sizing: border-box;
         }
-
+ 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #ff6b6b 0%, #f7dc6f 100%);
@@ -20,7 +20,7 @@
             align-items: center;
             padding: 20px;
         }
-
+ 
         .container {
             background: white;
             border-radius: 20px;
@@ -29,23 +29,23 @@
             max-width: 500px;
             width: 100%;
         }
-
+ 
         h1 {
             color: #333;
             margin-bottom: 10px;
             font-size: 28px;
         }
-
+ 
         .subtitle {
             color: #666;
             margin-bottom: 30px;
             font-size: 14px;
         }
-
+ 
         .input-group {
             margin-bottom: 20px;
         }
-
+ 
         label {
             display: block;
             margin-bottom: 8px;
@@ -53,7 +53,7 @@
             font-weight: 500;
             font-size: 14px;
         }
-
+ 
         input {
             width: 100%;
             padding: 12px;
@@ -62,18 +62,18 @@
             font-size: 16px;
             transition: border-color 0.3s;
         }
-
+ 
         input:focus {
             outline: none;
             border-color: #667eea;
         }
-
+ 
         .button-group {
             display: flex;
             gap: 10px;
             margin-bottom: 30px;
         }
-
+ 
         button {
             flex: 1;
             padding: 14px;
@@ -84,26 +84,30 @@
             cursor: pointer;
             transition: all 0.3s;
         }
-
+ 
+        .btn-full {
+            width: 100%;
+        }
+ 
         .btn-primary {
             background: linear-gradient(135deg, #ff6b6b 0%, #f7dc6f 100%);
             color: white;
         }
-
+ 
         .btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
         }
-
+ 
         .btn-secondary {
             background: #f0f0f0;
             color: #555;
         }
-
+ 
         .btn-secondary:hover {
             background: #e0e0e0;
         }
-
+ 
         .qr-container {
             text-align: center;
             padding: 20px;
@@ -111,18 +115,18 @@
             border-radius: 12px;
             display: none;
         }
-
+ 
         .qr-container.show {
             display: block;
         }
-
+ 
         #qrcode {
             display: inline-block;
             padding: 20px;
             background: white;
             border-radius: 8px;
         }
-
+ 
         .location-info {
             margin-top: 15px;
             padding: 15px;
@@ -132,22 +136,22 @@
             color: #666;
             text-align: left;
         }
-
+ 
         .location-info strong {
             color: #333;
         }
-
+ 
         .error {
             color: #e74c3c;
             font-size: 14px;
             margin-top: 10px;
             display: none;
         }
-
+ 
         .error.show {
             display: block;
         }
-
+ 
         .footer {
             text-align: center;
             margin-top: 30px;
@@ -162,36 +166,36 @@
     <div class="container">
         <h1>📱 Universal QR Code Generator</h1>
         <p class="subtitle">Generate a QR code for any URL</p>
-
+ 
         <div class="input-group">
             <label for="urlInput">Enter URL</label>
             <input type="text" id="urlInput" placeholder="e.g., https://maps.google.com/?q=40.7128,-74.0060 or https://example.com" value="">
         </div>
-
+ 
         <div class="button-group">
             <button class="btn-primary" onclick="generateQR()">Generate QR Code</button>
-            <button class="btn-secondary" onclick="useCurrentLocation()">Current Location</button>
         </div>
-
+ 
         <div class="error" id="error"></div>
-
+ 
         <div class="qr-container" id="qrContainer">
             <div id="qrcode"></div>
+            <button class="btn-primary btn-full" onclick="downloadQR()" style="margin-top: 20px;">Download QR Code</button>
             <div class="location-info" id="locationInfo"></div>
         </div>
-
+ 
         <div class="footer">
             © <span id="currentYear"></span> Shadow Corp. All rights reserved.
         </div>
     </div>
-
+ 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
         // Set current year dynamically
         document.getElementById('currentYear').textContent = new Date().getFullYear();
-
+ 
         let qrcode = null;
-
+ 
         function showError(message) {
             const errorEl = document.getElementById('error');
             errorEl.textContent = message;
@@ -200,21 +204,21 @@
                 errorEl.classList.remove('show');
             }, 3000);
         }
-
+ 
         function generateQR() {
             const url = document.getElementById('urlInput').value.trim();
-
+ 
             if (!url) {
                 showError('Please enter a URL');
                 return;
             }
-
+ 
             const qrContainer = document.getElementById('qrContainer');
             const qrcodeEl = document.getElementById('qrcode');
             const locationInfo = document.getElementById('locationInfo');
-
+ 
             qrcodeEl.innerHTML = '';
-
+ 
             qrcode = new QRCode(qrcodeEl, {
                 text: url,
                 width: 256,
@@ -223,21 +227,39 @@
                 colorLight: '#ffffff',
                 correctLevel: QRCode.CorrectLevel.H
             });
-
+ 
             locationInfo.innerHTML = `
                 <strong>Encoded URL:</strong><br>
                 <a href="${url}" target="_blank" style="color: #ff6b6b; word-break: break-all;">${url}</a>
             `;
-
+ 
             qrContainer.classList.add('show');
         }
-
+ 
+        function downloadQR() {
+            const canvas = document.querySelector('#qrcode canvas');
+            if (!canvas) {
+                showError('Please generate a QR code first');
+                return;
+            }
+ 
+            // Convert canvas to blob and download
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.download = 'qr-code.png';
+                link.href = url;
+                link.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+ 
         function useCurrentLocation() {
             if (!navigator.geolocation) {
                 showError('Geolocation is not supported by your browser');
                 return;
             }
-
+ 
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const lat = position.coords.latitude.toFixed(6);
@@ -251,7 +273,7 @@
                 }
             );
         }
-
+ 
         document.getElementById('urlInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') generateQR();
         });
