@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Location QR Code Generator</title>
+    <title>Location QR Code Generator with Logo</title>
     <style>
         * {
             margin: 0;
@@ -68,6 +68,48 @@
             border-color: #667eea;
         }
  
+        .emoji-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 20px;
+            text-align: center;
+            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+            transition: border-color 0.3s;
+        }
+ 
+        .emoji-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+ 
+        .logo-preview {
+            margin-top: 10px;
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            text-align: center;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #999;
+        }
+ 
+        .logo-preview.active {
+            background: #fff3f0;
+            border: 2px solid #ff6b6b;
+            color: #ff6b6b;
+        }
+ 
+        .input-hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+ 
         .button-group {
             display: flex;
             gap: 10px;
@@ -125,6 +167,18 @@
             padding: 20px;
             background: white;
             border-radius: 8px;
+            position: relative;
+        }
+ 
+        .qr-with-logo {
+            position: relative;
+            display: inline-block;
+        }
+ 
+        #finalQRCanvas {
+            border-radius: 8px;
+            max-width: 100%;
+            height: auto;
         }
  
         .location-info {
@@ -152,6 +206,17 @@
             display: block;
         }
  
+        .success {
+            color: #27ae60;
+            font-size: 14px;
+            margin-top: 10px;
+            display: none;
+        }
+ 
+        .success.show {
+            display: block;
+        }
+ 
         .footer {
             text-align: center;
             margin-top: 30px;
@@ -160,16 +225,34 @@
             color: #666;
             font-size: 14px;
         }
+
+        .hidden-canvas {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📱 Universal QR Code Generator</h1>
-        <p class="subtitle">Generate a QR code for any URL</p>
+        <p class="subtitle">Generate a QR code with optional logo or emoji</p>
  
         <div class="input-group">
             <label for="urlInput">Enter URL</label>
             <input type="text" id="urlInput" placeholder="e.g., https://maps.google.com/?q=40.7128,-74.0060 or https://example.com" value="">
+        </div>
+
+        <div class="input-group">
+            <label for="emojiInput">Emoji (Optional)</label>
+            <input type="text" id="emojiInput" placeholder="Paste any emoji like 🚀 ❤️ 🎉" class="emoji-input" maxlength="10">
+            <div class="input-hint">Just paste your favorite emoji</div>
+            <div class="logo-preview" id="emojiPreview">No emoji selected</div>
+        </div>
+
+        <div class="input-group">
+            <label for="imageInput">Or Upload Image (Optional)</label>
+            <input type="file" id="imageInput" accept="image/png,image/jpeg,image/jpg,image/gif" style="padding: 8px;">
+            <div class="input-hint">PNG/JPG/GIF with transparent background recommended</div>
+            <div class="logo-preview" id="imagePreview">No image selected</div>
         </div>
  
         <div class="button-group">
@@ -177,9 +260,13 @@
         </div>
  
         <div class="error" id="error"></div>
+        <div class="success" id="success"></div>
  
         <div class="qr-container" id="qrContainer">
-            <div id="qrcode"></div>
+            <div class="qr-with-logo">
+                <div id="qrcode" style="display: none;"></div>
+                <canvas id="finalQRCanvas"></canvas>
+            </div>
             <button class="btn-primary btn-full" onclick="downloadQR()" style="margin-top: 20px;">Download QR Code</button>
             <div class="location-info" id="locationInfo"></div>
         </div>
@@ -195,16 +282,59 @@
         document.getElementById('currentYear').textContent = new Date().getFullYear();
  
         let qrcode = null;
+        let uploadedImageFile = null;
  
         function showError(message) {
             const errorEl = document.getElementById('error');
+            const successEl = document.getElementById('success');
+            successEl.classList.remove('show');
             errorEl.textContent = message;
             errorEl.classList.add('show');
             setTimeout(() => {
                 errorEl.classList.remove('show');
+            }, 4000);
+        }
+
+        function showSuccess(message) {
+            const errorEl = document.getElementById('error');
+            const successEl = document.getElementById('success');
+            errorEl.classList.remove('show');
+            successEl.textContent = message;
+            successEl.classList.add('show');
+            setTimeout(() => {
+                successEl.classList.remove('show');
             }, 3000);
         }
  
+        function updateEmojiPreview() {
+            const emoji = document.getElementById('emojiInput').value.trim();
+            const preview = document.getElementById('emojiPreview');
+            
+            if (!emoji) {
+                preview.textContent = 'No emoji selected';
+                preview.classList.remove('active');
+            } else {
+                preview.textContent = emoji;
+                preview.classList.add('active');
+            }
+        }
+
+        function updateImagePreview() {
+            const fileInput = document.getElementById('imageInput');
+            const preview = document.getElementById('imagePreview');
+            
+            if (!fileInput.files || !fileInput.files[0]) {
+                preview.textContent = 'No image selected';
+                preview.classList.remove('active');
+                uploadedImageFile = null;
+            } else {
+                const file = fileInput.files[0];
+                uploadedImageFile = file;
+                preview.innerHTML = '🖼️ ' + file.name;
+                preview.classList.add('active');
+            }
+        }
+
         function generateQR() {
             const url = document.getElementById('urlInput').value.trim();
  
@@ -212,6 +342,12 @@
                 showError('Please enter a URL');
                 return;
             }
+
+            const emoji = document.getElementById('emojiInput').value.trim();
+
+            // Check if either emoji or image is provided (emoji takes priority)
+            const useEmoji = emoji ? true : false;
+            const useImage = !useEmoji && uploadedImageFile ? true : false;
  
             const qrContainer = document.getElementById('qrContainer');
             const qrcodeEl = document.getElementById('qrcode');
@@ -227,56 +363,156 @@
                 colorLight: '#ffffff',
                 correctLevel: QRCode.CorrectLevel.H
             });
- 
+
             locationInfo.innerHTML = `
                 <strong>Encoded URL:</strong><br>
                 <a href="${url}" target="_blank" style="color: #ff6b6b; word-break: break-all;">${url}</a>
             `;
- 
-            qrContainer.classList.add('show');
+
+            // Wait for QR code to render, then process with logo if provided
+            setTimeout(() => {
+                if (useEmoji) {
+                    overlayEmojiOnQR(emoji);
+                } else if (useImage) {
+                    overlayImageOnQR(uploadedImageFile);
+                } else {
+                    displayPlainQR();
+                }
+                qrContainer.classList.add('show');
+            }, 100);
         }
- 
+
+        function displayPlainQR() {
+            const qrcodeEl = document.getElementById('qrcode');
+            const canvas = document.getElementById('finalQRCanvas');
+            const sourceCanvas = qrcodeEl.querySelector('canvas');
+            
+            if (sourceCanvas) {
+                const ctx = canvas.getContext('2d');
+                canvas.width = sourceCanvas.width;
+                canvas.height = sourceCanvas.height;
+                ctx.drawImage(sourceCanvas, 0, 0);
+            }
+        }
+
+        function overlayEmojiOnQR(emoji) {
+            const qrcodeEl = document.getElementById('qrcode');
+            const sourceCanvas = qrcodeEl.querySelector('canvas');
+            const finalCanvas = document.getElementById('finalQRCanvas');
+            
+            if (!sourceCanvas) {
+                showError('Failed to generate QR code');
+                return;
+            }
+
+            const ctx = finalCanvas.getContext('2d');
+            finalCanvas.width = sourceCanvas.width;
+            finalCanvas.height = sourceCanvas.height;
+
+            // Draw QR code
+            ctx.drawImage(sourceCanvas, 0, 0);
+
+            // Draw white background circle for better contrast
+            const centerX = finalCanvas.width / 2;
+            const centerY = finalCanvas.height / 2;
+            const circleRadius = finalCanvas.width * 0.15;
+
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, circleRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw emoji
+            const fontSize = finalCanvas.width * 0.2;
+            ctx.font = `${fontSize}px 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol'`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(emoji, centerX, centerY);
+        }
+
+        function overlayImageOnQR(imageFile) {
+            const qrcodeEl = document.getElementById('qrcode');
+            const sourceCanvas = qrcodeEl.querySelector('canvas');
+            const finalCanvas = document.getElementById('finalQRCanvas');
+            
+            if (!sourceCanvas) {
+                showError('Failed to generate QR code');
+                return;
+            }
+
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const img = new Image();
+                
+                img.onload = function() {
+                    const ctx = finalCanvas.getContext('2d');
+                    finalCanvas.width = sourceCanvas.width;
+                    finalCanvas.height = sourceCanvas.height;
+
+                    // Draw QR code
+                    ctx.drawImage(sourceCanvas, 0, 0);
+
+                    // Calculate logo size and position (30% of QR code)
+                    const logoSize = Math.round(finalCanvas.width * 0.3);
+                    const x = (finalCanvas.width - logoSize) / 2;
+                    const y = (finalCanvas.height - logoSize) / 2;
+
+                    // Draw white background with padding for better contrast
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.arc(finalCanvas.width / 2, finalCanvas.height / 2, logoSize / 1.8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Draw border
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Draw image
+                    ctx.drawImage(img, x, y, logoSize, logoSize);
+                };
+
+                img.onerror = function() {
+                    showError('Failed to process image');
+                    displayPlainQR();
+                };
+
+                img.src = e.target.result;
+            };
+
+            reader.onerror = function() {
+                showError('Failed to read image file');
+                displayPlainQR();
+            };
+
+            reader.readAsDataURL(imageFile);
+        }
+
         function downloadQR() {
-            const canvas = document.querySelector('#qrcode canvas');
-            if (!canvas) {
+            const canvas = document.getElementById('finalQRCanvas');
+            if (!canvas || canvas.width === 0) {
                 showError('Please generate a QR code first');
                 return;
             }
  
-            // Convert canvas to blob and download
             canvas.toBlob(function(blob) {
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
-                link.download = 'qr-code.png';
+                link.download = 'qr-code-with-logo.png';
                 link.href = url;
                 link.click();
                 URL.revokeObjectURL(url);
+                showSuccess('QR code downloaded successfully!');
             });
         }
- 
-        function useCurrentLocation() {
-            if (!navigator.geolocation) {
-                showError('Geolocation is not supported by your browser');
-                return;
-            }
- 
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude.toFixed(6);
-                    const lon = position.coords.longitude.toFixed(6);
-                    const locationUrl = `https://www.google.com/maps?q=${lat},${lon}`;
-                    document.getElementById('urlInput').value = locationUrl;
-                    generateQR();
-                },
-                (error) => {
-                    showError('Unable to get your location: ' + error.message);
-                }
-            );
-        }
- 
+
         document.getElementById('urlInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') generateQR();
         });
+
+        document.getElementById('emojiInput').addEventListener('input', updateEmojiPreview);
+        document.getElementById('imageInput').addEventListener('input', updateImagePreview);
     </script>
 </body>
 </html>
